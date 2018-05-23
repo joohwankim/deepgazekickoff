@@ -1,0 +1,87 @@
+[
+    {
+        "id": 1,
+        "method": "synthetic_blender",
+        "setup": "lefteyeglasses",
+        "subject": "female01",
+        "task": "Plan002",
+        "date": "20180520",
+        "contents": [
+            "images",
+            "region_masks"
+        ],
+        "labels": [
+            "gaze_xy",
+            "eyeball_xyz"
+        ],
+        "setname": "0001_synthetic_blender_lefteyeglasses_female01_Plan002_20180520"
+    },
+    {
+        "id": 2,
+        "method": "synthetic_blender",
+        "setup": "lefteyeglasses",
+        "subject": "female01noglint",
+        "task": "Plan002",
+        "date": "20180520",
+        "contents": [
+            "images",
+            "region_masks"
+        ],
+        "labels": [
+            "gaze_xy",
+            "eyeball_xyz"
+        ],
+        "setname": "0002_synthetic_blender_lefteyeglasses_female01noglint_Plan002_20180520"
+    },
+    {
+        "id": 3,
+        "method": "synthetic_blender",
+        "setup": "lefteyeglasses",
+        "subject": "male01noglint",
+        "task": "Plan002",
+        "date": "20180521",
+        "contents": [
+            "images",
+            "region_masks"
+        ],
+        "labels": [
+            "gaze_xy",
+            "eyeball_xyz"
+        ],
+        "setname": "0003_synthetic_blender_lefteyeglasses_male01noglint_Plan002_20180521"
+    },
+    {
+        "id": 4,
+        "method": "synthetic_blender",
+        "setup": "lefteyeglasses",
+        "subject": "male02",
+        "task": "Plan002",
+        "date": "20180519",
+        "contents": [
+            "images",
+            "region_masks"
+        ],
+        "labels": [
+            "gaze_xy",
+            "eyeball_xyz"
+        ],
+        "setname": "0004_synthetic_blender_lefteyeglasses_male02_Plan002_20180519"
+    },
+    {
+        "id": 5,
+        "method": "synthetic_blender",
+        "setup": "lefteyeglasses",
+        "subject": "male04noglint",
+        "task": "Plan002",
+        "date": "20180521",
+        "contents": [
+            "images",
+            "region_masks"
+        ],
+        "labels": [
+            "gaze_xy",
+            "eyeball_xyz"
+        ],
+        "setname": "0005_synthetic_blender_lefteyeglasses_male04noglint_Plan002_20180521"
+    }
+]
