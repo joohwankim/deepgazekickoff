@@ -5,7 +5,8 @@
 
 import json, pdb, glob, os, sys, shutil
 import pandas as pd
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget,QTableWidgetItem,QVBoxLayout,QHeaderView, QAbstractItemView, QMenuBar, QAction, QFileDialog, QInputDialog
+# from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget,QTableWidgetItem,QVBoxLayout,QHeaderView, QAbstractItemView, QMenuBar, QAction, QFileDialog, QInputDialog, QLineEdit
+from PyQt5.QtWidgets import *
 from PyQt5 import QtGui
 from PyQt5.QtGui import QClipboard
 # from PyQt5.QtGui import QIcon, QColor, QMenuBar
@@ -162,7 +163,9 @@ class DatasetManager(QWidget):
         # setting up call back functions
         self.tableWidget.cellClicked.connect(self.on_cell_click)
         self.tableWidget.cellDoubleClicked.connect(self.on_cell_double_click)
+        # self.tableWidget.itemChanged.connect(self.on_item_change)
         self.tableWidget.horizontalHeader().sectionClicked.connect(self.on_header_click)
+        self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
     def update_cells(self):
         # retrieve all the active descriptions from self.F, sort, and display.
@@ -200,11 +203,11 @@ class DatasetManager(QWidget):
 
     @pyqtSlot()
     def on_cell_double_click(self): # edit a cell
-        displayed_i = self.tableWidget.selectedItems()[0].rows()
+        displayed_i = self.tableWidget.selectedItems()[0].row()
         # find index in self.F.descriptions for the selected cell.
         idx = self.F.descriptions.index[self.F.descriptions['id'] == self.displayed_descriptions.at[displayed_i, 'id']].tolist()[0]
         key = self.F.get_desc_key_list()[self.tableWidget.selectedItems()[0].column()]
-        if key in ['method','setup','subject','task','setname','date']:
+        if key in ['method','setup','subject','task','date']:
             text, ok_pressed = QInputDialog.getText(self, 'Input text',key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
             if ok_pressed:
                 self.F.update_description(idx,key,text)
@@ -212,10 +215,13 @@ class DatasetManager(QWidget):
             text, ok_pressed = QInputDialog.getText(self, 'Input text',key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
             if ok_pressed:
                 # attempt to change the folder name.
-                result = shutil.move(os.path.join(self.active_folder_path, desc['setname']), os.path.join(self.active_folder_path, text))
+                pdb.set_trace()
+                result = shutil.move(os.path.join(self.F.active_folder_path, self.F.descriptions.at[idx, key]), os.path.join(self.F.active_folder_path, text))
                 # if successful, change descriptions.
                 if os.path.basename(result) == text:
                     self.F.update_description(idx,key,text)
+                else:
+                    QMessageBox.about(self,'Error message','File renaming was unsuccessful. Keeping previous value.')
         elif key in ['labels','contents']:
             content_string = ', '.join(self.F.descriptions.at[idx,key])
             text, ok_pressed = QInputDialog.getText(self, 'Input text',key + ':', QLineEdit.Normal, content_string)
@@ -246,6 +252,10 @@ class DatasetManager(QWidget):
         self.F.add_set(selected_folder)
         # update the table
         self.update_cells()
+
+    # @pyqtSlot()
+    # def on_item_change(self):
+    #     print('aa')
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
