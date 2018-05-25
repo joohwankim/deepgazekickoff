@@ -3,124 +3,26 @@
 # 2. Sort the items with respect to the property chosen by the viewer.
 # 3. Provide a clipboard copy of the paths to the selected items.
 
-import json, pdb, glob, os, sys, shutil
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget,QTableWidgetItem,QVBoxLayout,QHeaderView, QAbstractItemView, QMenuBar, QAction
-from PyQt5 import QtGui
-# from PyQt5.QtGui import QIcon, QColor, QMenuBar
+import json, pdb, sys
+import pandas as pd
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 from PyQt5.QtCore import pyqtSlot
+from MultiInputDialog import *
+from DataNavigatorBackend import *
 
-class footage_manager_backend():
-    def update_json(self):
-        with open(os.path.join(self.footage_path, self.description_filename),'w') as fw:
-            json.dump(self.descriptions, fw, indent = 4)
-
-    def get_desc_key_list(self):
-        # generate key list of all the items in the descriptions
-        keys = set()
-        for desc in self.descriptions:
-            for key in desc.keys():
-                keys.add(key)
-        keys = list(keys)
-        # Ordering of keys. We want to have the following keys to be at front.
-        keys.sort()
-        predetermined_key_order = ['method','setup','subject','labels','contents']
-        for k_i, key in enumerate(predetermined_key_order):
-            if key in keys:
-                keys.insert(k_i, keys.pop(keys.index(key)))
-        # Put setname at the end because it is long.
-        keys.insert(len(keys), keys.pop(keys.index('setname')))
-        return list(keys)
-
-    def sort_descriptions(self, sort_key):
-        sorted_descriptions = sorted(self.descriptions, key = lambda x:x[sort_key])
-        self.descriptions = sorted_descriptions
-
-    def __init__(self):
-        # import descriptions
-        self.footage_path = "\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage"
-        self.inactive_files_path = "\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage/inactive"
-        self.description_filename = "footage_descriptions.json"
-        with open(os.path.join(self.footage_path, self.description_filename),'r') as fr:
-            json_str = fr.read()
-            self.descriptions = json.loads(json_str)
-        self.sort_descriptions('setname')
-        if self.is_any_set_missing(): # make sure all the sets are present in the footage folder.
-            sys.exit("Some sets listed in the description file are missing.")
-
-    def is_any_set_missing(self):
-        dirs = os.listdir(self.footage_path)
-        missing_dir_count = 0
-        for description in self.descriptions:
-            if not description['setname'] in dirs:
-                missing_dir_count += 1
-        if missing_dir_count > 0:
-            return True
-        else:
-            return False
-
-    def delete_set(self, set_ids):
-        # make sure inactive files folder exists and create one if not.
-        if not os.path.exists(self.inactive_files_path):
-            os.mkdir(self.inactive_files_path)
-        for desc in self.descriptions:
-            if desc['id'] in set_ids: # this set should be deleted (moved to the 'inactive files' folder).
-                # determine the destination file name
-                dst_setname = ''
-                if os.path.exists(os.path.join(self.inactive_files_path, desc['setname'])): # if folder already exists
-                    try_cnt = 1
-                    while(True):
-                        if os.path.exists(os.path.join(self.inactive_files_path, desc['setname']) + '_' + str(try_cnt)):
-                            try_cnt += 1
-                        else:
-                            dst_setname = os.path.join(self.inactive_files_path, desc['setname']) + '_' + str(try_cnt)
-                            break
-                else:
-                    dst_setname = os.path.join(self.inactive_files_path, desc['setname'])
-                # move the set
-                result = shutil.move(os.path.join(self.footage_path, desc['setname']), dst_setname)
-                # remove from descriptions if 'move' was successful.
-                if os.path.exists(result):
-                    for i, description in enumerate(self.descriptions):
-                        if desc['setname'] == description['setname']:
-                            del self.descriptions[i]
-        # update json file
-        self.update_json()
-
-
-        # for set_id in set_ids:
-        #     # move the folder to the inactive files folder.
-        #     # determine destination set name
-        #     dst_setname = ''
-        #     if os.path.exists(os.path.join(self.inactive_files_path, d_set['setname'])): # if folder already exists
-        #         try_cnt = 1
-        #         while(True):
-        #             if os.path.exists(os.path.join(self.inactive_files_path, d_set['setname']) + '_' + str(try_cnt)):
-        #                 try_cnt += 1
-        #             else:
-        #                 dst_setname = os.path.join(self.inactive_files_path, d_set['setname']) + '_' + str(try_cnt)
-        #                 break
-        #     else:
-        #         dst_setname = os.path.join(self.inactive_files_path, d_set['setname'])
-        #     # move the folder
-        #     result = shutil.move(os.path.join(self.footage_path, d_set['setname']), dst_setname)
-        #     # remove from descriptions if 'move' was successful.
-        #     if os.path.exists(result):
-        #         for i, description in enumerate(self.descriptions):
-        #             if d_set['setname'] == description['setname']:
-        #                 del self.descriptions[i]
-        # # update json file
-        # self.update_json()
-
-class FootageManager(QWidget):
+class DatasetManager(QWidget):
     def __init__(self):
         super().__init__()
-        self.title = 'Footage Management'
-        self.F = footage_manager_backend()
+        self.title = 'Dataset Management'
+        # initialize footage manager
+        self.F = data_manager_backend("\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage")
         self.w_left = 50
         self.w_top = 50
         self.w_width = 1200
         self.w_height = 800
         self.highlighted_set_ids = set()
+        self.sort_key = 'setname'
         self.initUI()
 
     def initUI(self):
@@ -133,8 +35,14 @@ class FootageManager(QWidget):
         deleteAction = QAction('Delete',self)
         deleteAction.triggered.connect(self.on_delete)
         fileMenu.addAction(deleteAction)
+        addAction = QAction('Add footage',self)
+        addAction.triggered.connect(self.on_add)
+        fileMenu.addAction(addAction)
+        createH5Action = QAction('Create H5',self)
+        createH5Action.triggered.connect(self.on_create_h5)
+        fileMenu.addAction(createH5Action)
  
-        self.createTable()
+        self.create_table()
 
         # Add box layout, add table to box layout and add box layout to widget
         self.layout = QVBoxLayout()
@@ -145,11 +53,11 @@ class FootageManager(QWidget):
         # Show widget
         self.show()
  
-    def createTable(self):
+    def create_table(self):
         desc_keys = self.F.get_desc_key_list()
        # Create table
         self.tableWidget = QTableWidget()
-        self.tableWidget.setRowCount(len(self.F.descriptions))
+        self.tableWidget.setRowCount(len(self.F.descriptions[self.F.descriptions['status'] == 'active']))
         self.tableWidget.setColumnCount(len(desc_keys))
         # self.tableWidget.setItem(0,c_i,QTableWidgetItem(key))
         self.tableWidget.setHorizontalHeaderLabels(desc_keys)
@@ -158,21 +66,24 @@ class FootageManager(QWidget):
         self.update_cells()
         # setting up call back functions
         self.tableWidget.cellClicked.connect(self.on_cell_click)
+        self.tableWidget.cellDoubleClicked.connect(self.on_cell_double_click)
+        # self.tableWidget.itemChanged.connect(self.on_item_change)
         self.tableWidget.horizontalHeader().sectionClicked.connect(self.on_header_click)
+        self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
     def update_cells(self):
-        self.tableWidget.setRowCount(len(self.F.descriptions))
+        # retrieve all the active descriptions from self.F, sort, and display.
+        self.tableWidget.setRowCount(len(self.F.descriptions[self.F.descriptions['status'] == 'active']))
         desc_keys = self.F.get_desc_key_list()
-        for r_i, desc in enumerate(self.F.descriptions):
+        # NOTE: displayed_descriptions is for making connections between user-selected cells and self.F.descriptions.
+        # Actual data management should directly happen on self.F.descriptions.
+        self.displayed_descriptions = self.F.descriptions[self.F.descriptions['status'] == 'active'].sort_values(by = self.sort_key).reset_index()
+        for r_i, desc in self.displayed_descriptions.iterrows():
             for c_i, key in enumerate(desc_keys):
                 # fill in string contents
                 if key in desc:
-                    content_string = ''
                     if type(desc[key]).__name__ == 'list':
-                        for i, item in enumerate(desc[key]):
-                            content_string += item
-                            if i < len(desc[key]) - 1:
-                                content_string += ', '
+                        content_string = ', '.join(desc[key])
                     elif type(desc[key]).__name__ != 'str':
                         content_string = str(desc[key])
                     else:
@@ -180,37 +91,79 @@ class FootageManager(QWidget):
                     self.tableWidget.setItem(r_i,c_i,QTableWidgetItem(content_string))
                 # color the background of each cell
                 if desc['id'] in self.highlighted_set_ids:
-                    self.tableWidget.item(r_i,c_i).setBackground(QtGui.QColor(250,150,150))
+                    self.tableWidget.item(r_i,c_i).setBackground(QColor(250,150,150))
                 else:
-                    self.tableWidget.item(r_i,c_i).setBackground(QtGui.QColor(255,255,255))
+                    self.tableWidget.item(r_i,c_i).setBackground(QColor(255,255,255))
 
     @pyqtSlot()
     def on_cell_click(self):
         for currentQTableWidgetItem in self.tableWidget.selectedItems():
-            selected_set_id = self.F.descriptions[currentQTableWidgetItem.row()]['id']
+            selected_set_id = self.displayed_descriptions.at[currentQTableWidgetItem.row(),'id']
             if selected_set_id in self.highlighted_set_ids:
                 self.highlighted_set_ids.remove(selected_set_id)
             else:
                 self.highlighted_set_ids.add(selected_set_id)
-        desc_keys = self.F.get_desc_key_list()
+        self.update_cells()
+
+    @pyqtSlot()
+    def on_cell_double_click(self): # edit a cell
+        displayed_i = self.tableWidget.selectedItems()[0].row()
+        # find index in self.F.descriptions for the selected cell.
+        idx = self.F.descriptions.index[self.F.descriptions['id'] == self.displayed_descriptions.at[displayed_i, 'id']].tolist()[0]
+        key = self.F.get_desc_key_list()[self.tableWidget.selectedItems()[0].column()]
+        if key in ['method','setup','subject','task','date']:
+            text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
+            if ok_pressed:
+                self.F.update_description(idx,key,text)
+        elif key == 'setname':
+            text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
+            if ok_pressed:
+                # attempt to change the folder name.
+                pdb.set_trace()
+                result = shutil.move(os.path.join(self.F.active_folder_path, self.F.descriptions.at[idx, key]), os.path.join(self.F.active_folder_path, text))
+                # if successful, change descriptions.
+                if os.path.basename(result) == text:
+                    self.F.update_description(idx,key,text)
+                else:
+                    QMessageBox.about(self,'Error message','File renaming was unsuccessful. Keeping previous value.')
+        elif key in ['labels','contents']:
+            content_string = ', '.join(self.F.descriptions.at[idx,key])
+            text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, content_string)
+            if ok_pressed:
+                content_list = text.replace(' ','').split(',')
+                self.F.update_description(idx,key,content_list)
         self.update_cells()
 
     @pyqtSlot()
     def on_header_click(self):
         c_i = self.tableWidget.selectedItems()[0].column()
-        # sort descriptions with respect to the selected key
-        self.F.sort_descriptions(self.F.get_desc_key_list()[c_i])
-        # update the table so that descriptions are ordered with the new result
+        self.sort_key = self.F.get_desc_key_list()[c_i]
+        # update the table so that active_descriptions are ordered with the new result
         self.update_cells()
 
     @pyqtSlot()
     def on_delete(self):
         # delete highlighted files
-        self.F.delete_set(self.highlighted_set_ids)
+        self.F.delete_sets(self.highlighted_set_ids)
         # update the table
         self.update_cells()
 
+    @pyqtSlot()
+    def on_add(self):
+        # open file dialog and receive file list
+        selected_folder = QFileDialog.getExistingDirectory(self, "Select sets to be added.", self.F.candidate_folder_path) # one set at a time for now.
+        # make the deprived version of description for the new set. For now the user is responsible to modify descriptions after the set is added.
+        self.F.add_set(selected_folder)
+        # update the table
+        self.update_cells()
+
+    @pyqtSlot()
+    def on_create_h5(self):
+        # open file dialog and receive file list
+        inputs, ok = MultiInputDialog.getInputs([['resolution H','resolution_V'],'subsampling','which_eye'])
+        pdb.set_trace()
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = FootageManager()
+    ex = DatasetManager()
     sys.exit(app.exec_())

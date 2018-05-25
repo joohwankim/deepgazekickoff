@@ -1,22 +1,31 @@
-import pdb, sys
+import sys
+import numpy as np
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
 class MultiInputDialog(QDialog):
-    def __init__(self, parent = None):
+    def __init__(self, labels, parent = None):
         super(MultiInputDialog, self).__init__(parent)
 
         layout = QVBoxLayout(self)
+        self.edit_boxes = list() # 1D list that contains edit boxes in the order of labels.
 
-        # nice widget for editing the date
-        self.datetime = QDateTimeEdit(self)
-        self.datetime.setCalendarPopup(True)
-        self.datetime.setDateTime(QDateTime.currentDateTime())
-        layout.addWidget(self.datetime)
+        for labels_this_row in labels:
+            # layout that will store all the content for this row.
+            hbox = QHBoxLayout()
+            # if string, create a 1-element list using contaning string.
+            if type(labels_this_row).__name__ == 'str':
+                labels_this_row = [labels_this_row]
 
-        # receive a number
-        self.test_input = QLineEdit(self)
+            # iterate through all the items in the list to create a label and an edit box
+            for label in labels_this_row:
+                l = QLabel(label)
+                l.setAlignment(Qt.AlignLeft)
+                hbox.addWidget(l)
+                self.edit_boxes.append(QLineEdit())
+                hbox.addWidget(self.edit_boxes[-1])
+            layout.addLayout(hbox)
 
         # OK and Cancel buttons
         buttons = QDialogButtonBox(
@@ -30,19 +39,20 @@ class MultiInputDialog(QDialog):
     def dateTime(self):
         return self.datetime.dateTime()
 
-    def returnNumber(self):
-        return float(self.test_input.text())
+    def getData(self):
+        input_data = list()
+        for i, line_edit in enumerate(self.edit_boxes):
+            input_data.append(line_edit.text())
+        return input_data
 
     # static method to create the dialog and return (date, time, accepted)
     @staticmethod
-    def getDateTime(parent = None):
-        dialog = MultiInputDialog(parent)
+    def getInputs(labels, parent = None):
+        dialog = MultiInputDialog(labels, parent)
         result = dialog.exec_()
-        date = dialog.dateTime()
-        number = dialog.returnNumber()
-        return (date.date(), date.time(), number, result == QDialog.Accepted)
+        number = dialog.getData()
+        return (number, result == QDialog.Accepted)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    date, time, number, ok = MultiInputDialog.getDateTime()
-    pdb.set_trace()
+    input_data, ok = MultiInputDialog.getInputs([['resolution H','resolution_V'],'subsampling','which_eye'])
