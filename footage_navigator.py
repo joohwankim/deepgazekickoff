@@ -5,11 +5,8 @@
 
 import json, pdb, glob, os, sys, shutil
 import pandas as pd
-# from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget,QTableWidgetItem,QVBoxLayout,QHeaderView, QAbstractItemView, QMenuBar, QAction, QFileDialog, QInputDialog, QLineEdit
 from PyQt5.QtWidgets import *
-from PyQt5 import QtGui
-from PyQt5.QtGui import QClipboard
-# from PyQt5.QtGui import QIcon, QColor, QMenuBar
+from PyQt5.QtGui import *
 from PyQt5.QtCore import pyqtSlot
 
 class data_manager_backend():
@@ -134,9 +131,12 @@ class DatasetManager(QWidget):
         deleteAction = QAction('Delete',self)
         deleteAction.triggered.connect(self.on_delete)
         fileMenu.addAction(deleteAction)
-        addAction = QAction('Add from candidates',self)
+        addAction = QAction('Add footage',self)
         addAction.triggered.connect(self.on_add)
         fileMenu.addAction(addAction)
+        createH5Action = QAction('Create H5',self)
+        createH5Action.triggered.connect(self.on_create_h5)
+        fileMenu.addAction(createH5Action)
  
         self.createTable()
 
@@ -187,9 +187,9 @@ class DatasetManager(QWidget):
                     self.tableWidget.setItem(r_i,c_i,QTableWidgetItem(content_string))
                 # color the background of each cell
                 if desc['id'] in self.highlighted_set_ids:
-                    self.tableWidget.item(r_i,c_i).setBackground(QtGui.QColor(250,150,150))
+                    self.tableWidget.item(r_i,c_i).setBackground(QColor(250,150,150))
                 else:
-                    self.tableWidget.item(r_i,c_i).setBackground(QtGui.QColor(255,255,255))
+                    self.tableWidget.item(r_i,c_i).setBackground(QColor(255,255,255))
 
     @pyqtSlot()
     def on_cell_click(self):
@@ -208,11 +208,11 @@ class DatasetManager(QWidget):
         idx = self.F.descriptions.index[self.F.descriptions['id'] == self.displayed_descriptions.at[displayed_i, 'id']].tolist()[0]
         key = self.F.get_desc_key_list()[self.tableWidget.selectedItems()[0].column()]
         if key in ['method','setup','subject','task','date']:
-            text, ok_pressed = QInputDialog.getText(self, 'Input text',key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
+            text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
             if ok_pressed:
                 self.F.update_description(idx,key,text)
         elif key == 'setname':
-            text, ok_pressed = QInputDialog.getText(self, 'Input text',key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
+            text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
             if ok_pressed:
                 # attempt to change the folder name.
                 pdb.set_trace()
@@ -224,7 +224,7 @@ class DatasetManager(QWidget):
                     QMessageBox.about(self,'Error message','File renaming was unsuccessful. Keeping previous value.')
         elif key in ['labels','contents']:
             content_string = ', '.join(self.F.descriptions.at[idx,key])
-            text, ok_pressed = QInputDialog.getText(self, 'Input text',key + ':', QLineEdit.Normal, content_string)
+            text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, content_string)
             if ok_pressed:
                 content_list = text.replace(' ','').split(',')
                 self.F.update_description(idx,key,content_list)
@@ -253,9 +253,14 @@ class DatasetManager(QWidget):
         # update the table
         self.update_cells()
 
-    # @pyqtSlot()
-    # def on_item_change(self):
-    #     print('aa')
+    @pyqtSlot()
+    def on_create_h5(self):
+        # open file dialog and receive file list
+        selected_folder = QFileDialog.getExistingDirectory(self, "Select sets to be added.", self.F.candidate_folder_path) # one set at a time for now.
+        # make the deprived version of description for the new set. For now the user is responsible to modify descriptions after the set is added.
+        self.F.add_set(selected_folder)
+        # update the table
+        self.update_cells()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
