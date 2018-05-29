@@ -11,12 +11,14 @@ from PyQt5.QtCore import pyqtSlot
 from MultiInputDialog import *
 from DataNavigatorBackend import *
 
-class DatasetManager(QWidget):
-    def __init__(self):
+class DataManager(QWidget):
+    def __init__(self, data_path, preset_keys):
         super().__init__()
         self.title = 'Dataset Management'
         # initialize footage manager
-        self.F = data_manager_backend("\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage")
+        # data_path for footage: \\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage
+        # preset_keys for footage: ['id','date','method','setup','subject','labels','contents']
+        self.F = data_manager_backend(data_path, preset_keys)
         self.w_left = 50
         self.w_top = 50
         self.w_width = 1200
@@ -24,6 +26,8 @@ class DatasetManager(QWidget):
         self.highlighted_set_ids = set()
         self.sort_key = 'setname'
         self.initUI()
+        # Show widget
+        self.show()
 
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -31,16 +35,13 @@ class DatasetManager(QWidget):
  
         # Add action menus
         self.menu_bar = QMenuBar(self)
-        fileMenu = self.menu_bar.addMenu('File')
+        self.fileMenu = self.menu_bar.addMenu('File')
         deleteAction = QAction('Delete',self)
         deleteAction.triggered.connect(self.on_delete)
-        fileMenu.addAction(deleteAction)
+        self.fileMenu.addAction(deleteAction)
         addAction = QAction('Add footage',self)
         addAction.triggered.connect(self.on_add)
-        fileMenu.addAction(addAction)
-        createH5Action = QAction('Create H5',self)
-        createH5Action.triggered.connect(self.on_create_h5)
-        fileMenu.addAction(createH5Action)
+        self.fileMenu.addAction(addAction)
  
         self.create_table()
 
@@ -50,9 +51,6 @@ class DatasetManager(QWidget):
         self.layout.addWidget(self.tableWidget)
         self.setLayout(self.layout)
 
-        # Show widget
-        self.show()
- 
     def create_table(self):
         desc_keys = self.F.get_desc_key_list()
        # Create table
@@ -63,20 +61,27 @@ class DatasetManager(QWidget):
         self.tableWidget.setHorizontalHeaderLabels(desc_keys)
         for c_i in range(len(desc_keys)):
             self.tableWidget.horizontalHeader().setSectionResizeMode(c_i, QHeaderView.ResizeToContents)
-        self.update_cells()
+
+        # retrieve all the active descriptions from self.F, sort, and display.
+        self.tableWidget.setRowCount(len(self.F.descriptions[self.F.descriptions['status'] == 'active']))
+        for r_i in range(self.tableWidget.rowCount()):
+            for c_i in range(self.tableWidget.columnCount()):
+                self.tableWidget.setItem(r_i,c_i,QTableWidgetItem())
+
         # setting up call back functions
         self.tableWidget.cellClicked.connect(self.on_cell_click)
         self.tableWidget.cellDoubleClicked.connect(self.on_cell_double_click)
         # self.tableWidget.itemChanged.connect(self.on_item_change)
         self.tableWidget.horizontalHeader().sectionClicked.connect(self.on_header_click)
         self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tableWidget.setFocusPolicy(Qt.NoFocus)
+
+        self.update_cells()
 
     def update_cells(self):
-        # retrieve all the active descriptions from self.F, sort, and display.
-        self.tableWidget.setRowCount(len(self.F.descriptions[self.F.descriptions['status'] == 'active']))
         desc_keys = self.F.get_desc_key_list()
         # NOTE: displayed_descriptions is for making connections between user-selected cells and self.F.descriptions.
-        # Actual data management should directly happen on self.F.descriptions.
+        # Actual data management should only happen through self.F (the backend manager)
         self.displayed_descriptions = self.F.descriptions[self.F.descriptions['status'] == 'active'].sort_values(by = self.sort_key).reset_index()
         for r_i, desc in self.displayed_descriptions.iterrows():
             for c_i, key in enumerate(desc_keys):
@@ -88,7 +93,7 @@ class DatasetManager(QWidget):
                         content_string = str(desc[key])
                     else:
                         content_string = desc[key]
-                    self.tableWidget.setItem(r_i,c_i,QTableWidgetItem(content_string))
+                    self.tableWidget.item(r_i,c_i).setText(content_string)
                 # color the background of each cell
                 if desc['id'] in self.highlighted_set_ids:
                     self.tableWidget.item(r_i,c_i).setBackground(QColor(250,150,150))
@@ -111,11 +116,13 @@ class DatasetManager(QWidget):
         # find index in self.F.descriptions for the selected cell.
         idx = self.F.descriptions.index[self.F.descriptions['id'] == self.displayed_descriptions.at[displayed_i, 'id']].tolist()[0]
         key = self.F.get_desc_key_list()[self.tableWidget.selectedItems()[0].column()]
+        # If value is of string type...
         if key in ['method','setup','subject','task','date']:
             text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
             if ok_pressed:
                 self.F.update_description(idx,key,text)
-        elif key == 'setname':
+        # If change in value involves moving the folder...
+        elif key in ['setname']:
             text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, self.F.descriptions.at[idx, key])
             if ok_pressed:
                 # attempt to change the folder name.
@@ -126,6 +133,7 @@ class DatasetManager(QWidget):
                     self.F.update_description(idx,key,text)
                 else:
                     QMessageBox.about(self,'Error message','File renaming was unsuccessful. Keeping previous value.')
+        # If value is a list (of string)...
         elif key in ['labels','contents']:
             content_string = ', '.join(self.F.descriptions.at[idx,key])
             text, ok_pressed = QInputDialog.getText(self, "Input text",key + ':', QLineEdit.Normal, content_string)
@@ -157,13 +165,92 @@ class DatasetManager(QWidget):
         # update the table
         self.update_cells()
 
+class FootageManager(DataManager):
+    def __init__(self, data_path, preset_keys):
+        super().__init__(data_path, preset_keys)
+
+    def initUI(self):
+        super().initUI()
+        createH5Action = QAction('Create H5',self)
+        createH5Action.triggered.connect(self.on_create_h5)
+        self.fileMenu.addAction(createH5Action)
+
     @pyqtSlot()
     def on_create_h5(self):
         # open file dialog and receive file list
         inputs, ok = MultiInputDialog.getInputs([['resolution H','resolution_V'],'subsampling','which_eye'])
-        pdb.set_trace()
 
+class DatasetManager(DataManager):
+    def __init__(self, data_path, preset_keys):
+        super().__init__(data_path, preset_keys)
+
+    def initUI(self):
+        super().initUI()
+        # in case an h5 file generation failed and needs to be regenerated.
+        remakeH5Action = QAction('Restart H5 generation',self)
+        remakeH5Action.triggered.connect(self.on_remake_h5)
+        self.fileMenu.addAction(remakeH5Action)
+
+    @pyqtSlot()
+    def on_remake_h5(self):
+        # open file dialog and receive file list
+        inputs, ok = MultiInputDialog.getInputs([['resolution H','resolution_V'],'subsampling','which_eye'])
+ 
+class DataManagementApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.title = 'CNN Gaze Data Management'
+        self.left = 50
+        self.top = 50
+        self.width = 1200
+        self.height = 800
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+ 
+        self.tab_widget = DataManagementTabs(self)
+        self.setCentralWidget(self.tab_widget)
+ 
+        self.show()
+ 
+class DataManagementTabs(QWidget):        
+ 
+    def __init__(self, parent):   
+        super(QWidget, self).__init__(parent)
+        self.layout = QVBoxLayout(self)
+ 
+        # Initialize tab screen
+        self.tabs = QTabWidget()
+        self.tab1 = QWidget()   
+        self.tab2 = QWidget()
+        self.tabs.resize(300,200) 
+ 
+        # Add tabs
+        self.tabs.addTab(self.tab1,"Footage")
+        self.tabs.addTab(self.tab2,"Dataset")
+ 
+        # Create first tab
+        self.tab1.layout = QVBoxLayout(self.tab1)
+        self.pushButton1 = QPushButton("PyQt5 button")
+        self.tab1.layout.addWidget(self.pushButton1)
+        self.tab1.setLayout(self.tab1.layout)
+ 
+        # Add tabs to widget        
+        self.layout.addWidget(self.tabs)
+        self.setLayout(self.layout)
+ 
+    @pyqtSlot()
+    def on_click(self):
+        print("\n")
+        for currentQTableWidgetItem in self.tableWidget.selectedItems():
+            print(currentQTableWidgetItem.row(), currentQTableWidgetItem.column(), currentQTableWidgetItem.text())
+ 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = DatasetManager()
+    ex = DataManagementApp()
     sys.exit(app.exec_())
+
+# if __name__ == '__main__':
+#     app = QApplication(sys.argv)
+#     ex = FootageManager("\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage", ['id','date','method','setup','subject','labels','contents'])
+#     # ex = FootageManager("\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage", ['id','date','method','setup','subject','labels','contents'])
+#     sys.exit(app.exec_())
