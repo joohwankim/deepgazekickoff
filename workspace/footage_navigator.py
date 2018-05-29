@@ -30,26 +30,25 @@ class DataManager(QWidget):
         # self.show()
 
     def initUI(self):
-        # self.setWindowTitle(self.title)
-        # self.setGeometry(self.w_left, self.w_top, self.w_width, self.w_height)
- 
-        # Add action menus
-        self.menu_bar = QMenuBar(self)
-        self.fileMenu = self.menu_bar.addMenu('File')
-        deleteAction = QAction('Delete',self)
-        deleteAction.triggered.connect(self.on_delete)
-        self.fileMenu.addAction(deleteAction)
-        addAction = QAction('Add footage',self)
-        addAction.triggered.connect(self.on_add)
-        self.fileMenu.addAction(addAction)
- 
-        self.create_table()
-
-        # Add box layout, add table to box layout and add box layout to widget
         self.layout = QVBoxLayout()
-        self.layout.addWidget(self.menu_bar)
+        self.create_buttons_box()
+        self.layout.addLayout(self.buttons_box)
+        self.create_table()
         self.layout.addWidget(self.tableWidget)
         self.setLayout(self.layout)
+
+    def create_buttons_box(self):
+        # Add buttons
+        self.buttons_box = QHBoxLayout()
+        self.add_button = QPushButton('Add footage')
+        self.add_button.clicked.connect(self.on_add)
+        self.delete_button = QPushButton('Delete footage')
+        self.delete_button.clicked.connect(self.on_delete)
+        self.refresh_button = QPushButton('Refresh')
+        self.refresh_button.clicked.connect(self.on_refresh)
+        self.buttons_box.addWidget(self.add_button)
+        self.buttons_box.addWidget(self.delete_button)
+        self.buttons_box.addWidget(self.refresh_button)
 
     def create_table(self):
         desc_keys = self.F.get_desc_key_list()
@@ -165,36 +164,42 @@ class DataManager(QWidget):
         # update the table
         self.update_cells()
 
+    @pyqtSlot()
+    def on_refresh(self):
+        # refresh cell content
+        self.update_cells()
+
 class FootageManager(DataManager):
     def __init__(self, data_path, preset_keys):
         super().__init__(data_path, preset_keys)
 
-    def initUI(self):
-        super().initUI()
-        createH5Action = QAction('Create H5',self)
-        createH5Action.triggered.connect(self.on_create_h5)
-        self.fileMenu.addAction(createH5Action)
+    def create_buttons_box(self):
+        super().create_buttons_box()
+        self.create_h5_button = QPushButton('Create H5')
+        self.create_h5_button.clicked.connect(self.on_create_h5)
+        self.buttons_box.addWidget(self.create_h5_button)
 
     @pyqtSlot()
     def on_create_h5(self):
         # open file dialog and receive file list
-        inputs, ok = MultiInputDialog.getInputs([['resolution H','resolution_V'],'subsampling','which_eye'])
+        str_inputs, toggle_inputs, ok = MultiInputDialog.getInputs(line_edit_labels = [['resolution_H','resolution_V'],'subsampling','which_eye'], toggle_button_labels = 'Run on cluster (local if not highlighted)')
+        # create an h5 set definition, update the h5 json list, run data_prep.py
 
 class DatasetManager(DataManager):
     def __init__(self, data_path, preset_keys):
         super().__init__(data_path, preset_keys)
 
-    def initUI(self):
-        super().initUI()
+    def create_buttons_box(self):
+        super().create_buttons_box()
         # in case an h5 file generation failed and needs to be regenerated.
-        remakeH5Action = QAction('Restart H5 generation',self)
-        remakeH5Action.triggered.connect(self.on_remake_h5)
-        self.fileMenu.addAction(remakeH5Action)
+        self.remake_h5_button = QPushButton('Restart H5 generation')
+        self.remake_h5_button.clicked.connect(self.on_remake_h5)
+        self.buttons_box.addWidget(self.remake_h5_button)
 
     @pyqtSlot()
     def on_remake_h5(self):
-        # open file dialog and receive file list
-        inputs, ok = MultiInputDialog.getInputs([['resolution H','resolution_V'],'subsampling','which_eye'])
+        # execute data_prep.py again
+        pass # just for now; fill in execution of data_prep.py later.
  
 class DataManagementApp(QMainWindow):
     def __init__(self):
@@ -248,9 +253,3 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = DataManagementApp()
     sys.exit(app.exec_())
-
-# if __name__ == '__main__':
-#     app = QApplication(sys.argv)
-#     ex = FootageManager("\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage", ['id','date','method','setup','subject','labels','contents'])
-#     # ex = FootageManager("\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage", ['id','date','method','setup','subject','labels','contents'])
-#     sys.exit(app.exec_())
