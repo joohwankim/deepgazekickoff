@@ -14,24 +14,24 @@ from DataNavigatorBackend import *
 class DataManager(QWidget):
     def __init__(self, data_path, preset_keys):
         super().__init__()
-        self.title = 'Dataset Management'
+        # self.title = 'Dataset Management'
         # initialize footage manager
         # data_path for footage: \\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage
         # preset_keys for footage: ['id','date','method','setup','subject','labels','contents']
         self.F = data_manager_backend(data_path, preset_keys)
-        self.w_left = 50
-        self.w_top = 50
-        self.w_width = 1200
-        self.w_height = 800
+        # self.w_left = 50
+        # self.w_top = 50
+        # self.w_width = 1200
+        # self.w_height = 800
         self.highlighted_set_ids = set()
         self.sort_key = 'setname'
         self.initUI()
         # Show widget
-        self.show()
+        # self.show()
 
     def initUI(self):
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.w_left, self.w_top, self.w_width, self.w_height)
+        # self.setWindowTitle(self.title)
+        # self.setGeometry(self.w_left, self.w_top, self.w_width, self.w_height)
  
         # Add action menus
         self.menu_bar = QMenuBar(self)
@@ -220,19 +220,19 @@ class DataManagementTabs(QWidget):
  
         # Initialize tab screen
         self.tabs = QTabWidget()
-        self.tab1 = QWidget()   
-        self.tab2 = QWidget()
+        self.footage_tab = FootageManager("\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage", ['id','date','method','setup','subject','labels','contents'])
+        self.dataset_tab = DatasetManager("\\\\dcg-zfs-01.nvidia.com\\deep-gaze2.cosmos393/footage", ['resolution','subsampling','which_eye','input footage'])
         self.tabs.resize(300,200) 
  
         # Add tabs
-        self.tabs.addTab(self.tab1,"Footage")
-        self.tabs.addTab(self.tab2,"Dataset")
+        self.tabs.addTab(self.footage_tab,"Footage")
+        self.tabs.addTab(self.dataset_tab,"Dataset")
  
-        # Create first tab
-        self.tab1.layout = QVBoxLayout(self.tab1)
-        self.pushButton1 = QPushButton("PyQt5 button")
-        self.tab1.layout.addWidget(self.pushButton1)
-        self.tab1.setLayout(self.tab1.layout)
+        # # Create first tab
+        # self.tab1.layout = QVBoxLayout(self.tab1)
+        # self.pushButton1 = QPushButton("PyQt5 button")
+        # self.tab1.layout.addWidget(self.pushButton1)
+        # self.tab1.setLayout(self.tab1.layout)
  
         # Add tabs to widget        
         self.layout.addWidget(self.tabs)
