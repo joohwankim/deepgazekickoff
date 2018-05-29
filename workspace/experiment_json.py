@@ -10,7 +10,8 @@ footages.append({
     'date':'20180520',
     'contents':['images','region_masks'],
     'labels':['gaze_xy','eyeball_xyz'],
-    'setname':'0001_synthetic_blender_lefteyeglasses_female01_Plan002_20180520'
+    'setname':'0001_synthetic_blender_lefteyeglasses_female01_Plan002_20180520',
+    'status':'active'
     })
 footages.append({
     'id':2,
@@ -21,7 +22,8 @@ footages.append({
     'date':'20180520',
     'contents':['images','region_masks'],
     'labels':['gaze_xy','eyeball_xyz'],
-    'setname':'0002_synthetic_blender_lefteyeglasses_female01noglint_Plan002_20180520'
+    'setname':'0002_synthetic_blender_lefteyeglasses_female01noglint_Plan002_20180520',
+    'status':'active'
     })
 footages.append({
     'id':3,
@@ -32,7 +34,8 @@ footages.append({
     'date':'20180521',
     'contents':['images','region_masks'],
     'labels':['gaze_xy','eyeball_xyz'],
-    'setname':'0003_synthetic_blender_lefteyeglasses_male01noglint_Plan002_20180521'
+    'setname':'0003_synthetic_blender_lefteyeglasses_male01noglint_Plan002_20180521',
+    'status':'active'
     })
 footages.append({
     'id':4,
@@ -43,7 +46,8 @@ footages.append({
     'date':'20180519',
     'contents':['images','region_masks'],
     'labels':['gaze_xy','eyeball_xyz'],
-    'setname':'0004_synthetic_blender_lefteyeglasses_male02_Plan002_20180519'
+    'setname':'0004_synthetic_blender_lefteyeglasses_male02_Plan002_20180519',
+    'status':'active'
     })
 footages.append({
     'id':5,
@@ -54,7 +58,8 @@ footages.append({
     'date':'20180521',
     'contents':['images','region_masks'],
     'labels':['gaze_xy','eyeball_xyz'],
-    'setname':'0005_synthetic_blender_lefteyeglasses_male04noglint_Plan002_20180521'
+    'setname':'0005_synthetic_blender_lefteyeglasses_male04noglint_Plan002_20180521',
+    'status':'active'
     })
 
 with open('test.json','w') as fw:
